@@ -1,0 +1,1 @@
+const {PrismaClienet} = require("@prisma/client")
