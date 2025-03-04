@@ -1,39 +1,38 @@
 
 const express = require("express");
 const { Client } = require("pg");
-const auth = require("../middleware/auth");
 const authenticateUser = require("../middleware/auth");
-
+require("dotenv").config();
 const router = express.Router();
 
 const client = new Client({
-  user: "j.tuck",
-  host: "localhost",
-  database: "johnsgamesite",
-  password: "123",
-  port: 5432,
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASS,
+  port: process.env.DB_PORT,
 });
 
 client.connect();
 
-// Get reviews for a specific game
-router.get("/:gameId", async (req, res) => {
+// Get reviews for game
+router.get("/:Title", async (req, res) => {
   try {
-    const { gameId } = req.params;
-    const result = await client.query("SELECT * FROM Reviews WHERE gameId = $1", [gameId]);
+    const { Title } = req.params;
+    const result = await client.query("SELECT * FROM Reviews WHERE Title = $1", [Title]);
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch reviews" });
   }
 });
 
-// Post a new review (Protected Route)
+//  new review (Protected Route)
 router.post("/", authenticateUser, async (req, res) => {
-  const { gameId, rating, comment } = req.body;
+  const { Title, rating, comment } = req.body;
   try {
     const result = await client.query(
-      "INSERT INTO Reviews (gameId, userId, rating, comment) VALUES ($1, $2, $3, $4) RETURNING *",
-      [gameId, req.user, rating, comment]
+      "INSERT INTO Reviews (Title, userId, rating, comment) VALUES ($1, $2, $3, $4) RETURNING *",
+      [Title, req.user.id, rating, comment]
     );
     res.json(result.rows[0]);
   } catch (error) {
@@ -41,8 +40,8 @@ router.post("/", authenticateUser, async (req, res) => {
   }
 });
 
-// Update a review (Protected, only owner)
-router.put("/:reviewId", auth, async (req, res) => {
+// Update review (Protected, only owner)
+router.put("/:reviewId", authenticateUser, async (req, res) => {
   const { reviewId } = req.params;
   const { rating, comment } = req.body;
 
@@ -67,8 +66,8 @@ router.put("/:reviewId", auth, async (req, res) => {
   }
 });
 
-// Delete a review (Protected, only owner)
-router.delete("/:reviewId", auth, async (req, res) => {
+// Delete review (Protected, only owner)
+router.delete("/:reviewId", authenticateUser, async (req, res) => {
   const { reviewId } = req.params;
 
   try {
